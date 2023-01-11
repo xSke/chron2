@@ -11,9 +11,10 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release
 
-FROM debian:buster
+FROM debian:buster-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y openssl ca-certificates
-COPY --from=builder /app/target/release/chron-* /app
+COPY --from=builder /app/target/release/chron-api /app
+COPY --from=builder /app/target/release/chron-ingest /app
 COPY --from=builder /app/target/release/import_qd /app
 ENTRYPOINT [""]
