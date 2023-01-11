@@ -17,6 +17,7 @@ pub struct GetGameEventsQuery {
     search: Option<String>,
     before: Option<OffsetDateTime>,
     after: Option<OffsetDateTime>,
+    #[serde(default)]
     order: SortOrder,
 }
 
@@ -45,6 +46,7 @@ pub struct GetEventsQuery {
     // event: Option<String>,
     before: Option<OffsetDateTime>,
     after: Option<OffsetDateTime>,
+    #[serde(default)]
     order: SortOrder,
 }
 
@@ -67,7 +69,6 @@ pub async fn get_events(
 
     Ok(Json(events))
 }
-
 
 #[derive(Deserialize)]
 pub struct GetEntitiesQuery {

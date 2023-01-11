@@ -24,7 +24,16 @@ enum Idens {
 
 #[derive(Deserialize)]
 pub enum SortOrder {
-    Asc, Desc
+    #[serde(rename="asc")]
+    Asc, 
+    #[serde(rename="desc")]
+    Desc,
+}
+
+impl Default for SortOrder {
+    fn default() -> Self {
+        SortOrder::Asc
+    }
 }
 
 pub struct GetGameEventsQuery {
