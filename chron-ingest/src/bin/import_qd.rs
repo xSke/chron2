@@ -168,6 +168,7 @@ async fn main() -> anyhow::Result<()> {
         SqliteConnectOptions::from_str(&format!("sqlite://{}", sqlite_path))?.read_only(true);
     let qd = SqlitePoolOptions::new().connect_with(options).await?;
 
+    println!("starting import");
     let stream = sqlx::query("select * from fetches").fetch(&qd);
     stream
         .map(|row| {
@@ -195,6 +196,7 @@ async fn main() -> anyhow::Result<()> {
                 return stream::iter(vec![]);
             }
 
+            println!("{}", &row.url);
             stream::iter(parse_fetch(row).unwrap())
         })
         .flatten()
@@ -208,6 +210,7 @@ async fn main() -> anyhow::Result<()> {
         })
         .await;
 
+    println!("importing events");
     let stream = sqlx::query_as::<_, EventRow>("select * from events").fetch(&qd);
     stream
         .map(|row| {
@@ -217,6 +220,8 @@ async fn main() -> anyhow::Result<()> {
             )
             .unwrap();
             let payload = decode_payload(&row.payload).ok();
+
+            println!("{} / {}", row.channel, row.event);
 
             PusherEvent::new(ts, row.channel, row.event, payload, row.payload)
         })
