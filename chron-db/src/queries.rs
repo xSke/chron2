@@ -1,5 +1,6 @@
 use sea_query::{Query, Expr, Iden, PostgresQueryBuilder};
 use sea_query_binder::SqlxBinder;
+use serde::{Deserialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -20,11 +21,19 @@ enum Idens {
     Raw,
 }
 
+
+#[derive(Deserialize)]
+pub enum SortOrder {
+    Asc, Desc
+}
+
 pub struct GetGameEventsQuery {
     pub game_id: Option<Uuid>,
     pub search: Option<String>,
     pub before: Option<OffsetDateTime>,
     pub after: Option<OffsetDateTime>,
+    pub count: u64,
+    pub order: SortOrder,
 }
 
 pub struct GetEventsQuery {
@@ -32,12 +41,20 @@ pub struct GetEventsQuery {
     // pub event: Option<String>,
     pub before: Option<OffsetDateTime>,
     pub after: Option<OffsetDateTime>,
+    pub count: u64,
+    pub order: SortOrder,
 }
 
 pub struct GetEntitiesQuery {
     pub kind: EntityKind
 }
 
+fn get_order(order: SortOrder) -> sea_query::Order {
+    match order {
+        SortOrder::Asc => sea_query::Order::Asc,
+        SortOrder::Desc => sea_query::Order::Desc
+    }
+}
 
 impl ChronDb {
     pub async fn get_all_entity_ids(&self, kind: EntityKind) -> anyhow::Result<Vec<Uuid>> {
@@ -52,7 +69,8 @@ impl ChronDb {
         let mut qq = Query::select()
             .columns([Idens::GameId, Idens::Timestamp, Idens::Data])
             .from(Idens::GameEvents)
-            .order_by(Idens::Timestamp, sea_query::Order::Asc)
+            .order_by(Idens::Timestamp, get_order(q.order))
+            .limit(q.count)
             .to_owned();
 
         if let Some(game_id) = q.game_id {
@@ -83,7 +101,8 @@ impl ChronDb {
         let mut qq = Query::select()
             .columns([Idens::Channel, Idens::Event, Idens::Timestamp, Idens::Payload, Idens::Raw])
             .from(Idens::Events)
-            .order_by(Idens::Timestamp, sea_query::Order::Asc)
+            .order_by(Idens::Timestamp, get_order(q.order))
+            .limit(q.count)
             .to_owned();
 
         if let Some(channel) = q.channel {

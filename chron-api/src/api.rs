@@ -1,5 +1,5 @@
 use axum::{extract::{State, Query}, Json};
-use chron_db::models::{PusherEvent, GameEvent, EntityKind, EntityVersion};
+use chron_db::{models::{PusherEvent, GameEvent, EntityKind, EntityVersion}, queries::SortOrder};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -17,6 +17,7 @@ pub struct GetGameEventsQuery {
     search: Option<String>,
     before: Option<OffsetDateTime>,
     after: Option<OffsetDateTime>,
+    order: SortOrder,
 }
 
 pub async fn get_game_events(
@@ -30,6 +31,8 @@ pub async fn get_game_events(
             search: q.search,
             before: q.before,
             after: q.after,
+            count: 5000,
+            order: q.order,
         })
         .await?;
 
@@ -42,6 +45,7 @@ pub struct GetEventsQuery {
     // event: Option<String>,
     before: Option<OffsetDateTime>,
     after: Option<OffsetDateTime>,
+    order: SortOrder,
 }
 
 
@@ -56,6 +60,8 @@ pub async fn get_events(
             // event: q.event,
             before: q.before,
             after: q.after,
+            count: 5000,
+            order: q.order,
         })
         .await?;
 
