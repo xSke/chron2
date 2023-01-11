@@ -1,0 +1,8 @@
+[workspace]
+
+members = [
+    "chron-api",
+    "chron-base",
+    "chron-db",
+    "chron-ingest",
+]

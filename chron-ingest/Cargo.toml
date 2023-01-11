@@ -1,0 +1,30 @@
+[package]
+name = "chron-ingest"
+version = "0.1.0"
+edition = "2021"
+default-run = "chron-ingest"
+
+[dependencies]
+anyhow = "1.0.68"
+async-trait = "0.1.61"
+base64 = "0.21.0"
+chron-base = { path = "../chron-base" }
+chron-db = { path = "../chron-db" }
+dashmap = "5.4.0"
+flate2 = "1.0.25"
+futures = "0.3.25"
+reqwest = { version = "0.11.13", features = ["gzip", "brotli", "deflate", "json", "cookies"] }
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.91"
+time = { version = "0.3.17", features = ["serde", "parsing"] }
+tokio = { version = "1.24.1", features = ["full"] }
+tokio-tungstenite = { version = "0.18.0", features = ["native-tls"] }
+uuid = { version = "1.2.2", features = ["v4", "serde"] }
+
+# todo: remove once import_qd is gone
+sqlx = { version = "0.6.2", features = ["json", "postgres", "time", "uuid", "runtime-tokio-native-tls", "sqlite", "decimal"] }
+
+
+[[bin]]
+name = "import_qd"
+path = "src/bin/import_qd.rs"

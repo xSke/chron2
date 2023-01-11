@@ -1,0 +1,11 @@
+[package]
+name = "chron-base"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.68"
+config = { version = "0.13.3", default-features = false, features = ["toml"] }
+serde = { version = "1.0.152", features = ["derive"] }

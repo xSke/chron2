@@ -1,0 +1,22 @@
+version: "3"
+services:
+  ingest:
+    build: .
+    command: ["/app/chron-ingest"]
+    environment:
+      - "CHRON_DATABASE_URI=postgres://postgres:password@db:5432/postgres"
+    volumes:
+      - "./data:/app/data"
+      - "./config.toml:/app/config.toml"
+    restart: unless-stopped
+  db:
+    image: timescale/timescaledb:latest-pg15
+    ports:
+      - 127.0.0.1:6543:5432
+    environment: 
+      - "POSTGRES_PASSWORD=password"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+volumes:
+  db_data:
