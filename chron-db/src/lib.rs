@@ -1,10 +1,13 @@
-use std::{hash::Hasher, sync::Arc};
+use std::{hash::Hasher, str::FromStr, sync::Arc};
 
 use chron_base::ChronConfig;
 use dashmap::DashSet;
 use models::{EntityKind, PusherEvent};
 use siphasher::sip128::{Hasher128, SipHasher};
-use sqlx::{postgres::PgPoolOptions, Executor, PgPool};
+use sqlx::{
+    postgres::{PgConnectOptions, PgPoolOptions},
+    ConnectOptions, Executor, PgPool,
+};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -28,8 +31,10 @@ pub struct NewObject {
 
 impl ChronDb {
     pub async fn new(config: &ChronConfig) -> anyhow::Result<ChronDb> {
-        let opts = PgPoolOptions::new().max_connections(25);
-        let pool = opts.connect(&config.database_uri).await?;
+        let pool_opts = PgPoolOptions::new().max_connections(25);
+        let mut conn_opts = PgConnectOptions::from_str(&config.database_uri)?;
+        conn_opts.log_statements(log::LevelFilter::Debug);
+        let pool = pool_opts.connect_with(conn_opts).await?;
 
         sqlx::migrate!("./migrations").run(&pool).await?;
 

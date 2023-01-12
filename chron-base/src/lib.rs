@@ -8,6 +8,9 @@ pub struct ChronConfig {
 }
 
 pub fn load_config() -> anyhow::Result<ChronConfig> {
+    // maybe we shouldn't do this here idk
+    tracing_subscriber::fmt::init();
+
     let settings = Config::builder()
         .add_source(config::File::with_name("config"))
         .add_source(config::Environment::with_prefix("CHRON"))

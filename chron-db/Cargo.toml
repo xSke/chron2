@@ -19,3 +19,5 @@ chron-base = { path = "../chron-base" }
 sea-query = { version = "0.28.2", features = ["backend-postgres", "with-time", "with-uuid", "derive", "attr"] }
 serde = { version = "1.0.152", features = ["derive"] }
 sea-query-binder = { version = "0.3.0", features = ["sqlx", "sqlx-postgres", "with-time", "with-uuid"] }
+tracing = { version = "0.1.37", features = ["log"] }
+log = "0.4.17"

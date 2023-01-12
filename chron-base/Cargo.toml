@@ -9,3 +9,5 @@ edition = "2021"
 anyhow = "1.0.68"
 config = { version = "0.13.3", default-features = false, features = ["toml"] }
 serde = { version = "1.0.152", features = ["derive"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.16"
