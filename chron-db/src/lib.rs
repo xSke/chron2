@@ -111,7 +111,11 @@ impl ChronDb {
         Ok(hash)
     }
 
-    pub async fn save_game_event(&self, game_id: Uuid, data: serde_json::Value) -> anyhow::Result<()> {
+    pub async fn save_game_event(
+        &self,
+        game_id: Uuid,
+        data: serde_json::Value,
+    ) -> anyhow::Result<()> {
         sqlx::query("insert into game_events (game_id, data, timestamp, search_tsv) select game_id, data, (data->>'displayTime')::timestamptz, to_tsvector(data->>'displayText') from (select $1 as game_id, $2 as data) as x")
             .bind(game_id)
             .bind(&data)

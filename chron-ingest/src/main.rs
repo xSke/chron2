@@ -5,10 +5,10 @@ use chron_db::{
     models::{EntityKind, PusherEvent},
     ChronDb, NewObject,
 };
-use futures::{StreamExt};
+use futures::StreamExt;
 use http::DataClient;
 use pusher::{pusher_connect, PusherMessage};
-use time::{Duration};
+use time::Duration;
 use uuid::Uuid;
 use workers::{
     games::{PollAllGames, PollLiveGames},
