@@ -61,6 +61,17 @@ impl IntervalWorker for PollSimData {
             .save(&elections.to_chron(EntityKind::SeasonElections, season)?)
             .await?;
 
+        let elections = ctx
+            .client
+            .fetch(&format!(
+                "https://api2.blaseball.com/seasons/{}/tournaments",
+                season
+            ))
+            .await?;
+        ctx.db
+            .save(&elections.to_chron(EntityKind::SeasonTournaments, season)?)
+            .await?;
+
         Ok(())
     }
 }
