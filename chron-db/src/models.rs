@@ -21,6 +21,7 @@ pub enum EntityKind {
     BoxScore = 12,
     Sim = 13,
     SeasonTournaments = 14, // todo: break this out later
+    Tournament = 15,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]

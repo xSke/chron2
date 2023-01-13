@@ -17,7 +17,7 @@ impl IntervalWorker for PollSimData {
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
-        get_and_update_sim(ctx).await?;
+        let sim = get_and_update_sim(ctx).await?;
 
         let flagsmith = ctx
             .client
@@ -61,7 +61,20 @@ impl IntervalWorker for PollSimData {
             .save(&elections.to_chron(EntityKind::SeasonElections, season)?)
             .await?;
 
-        let elections = ctx
+        if let Some(tournament_id) = sim.sim_data.current_tournament_id {
+            let elections = ctx
+                .client
+                .fetch(&format!(
+                    "https://api2.blaseball.com/seasons/{}/tournaments/{}",
+                    season, tournament_id
+                ))
+                .await?;
+            ctx.db
+                .save(&elections.to_chron(EntityKind::Tournament, season)?)
+                .await?;
+        }
+
+        let all_tournaments = ctx
             .client
             .fetch(&format!(
                 "https://api2.blaseball.com/seasons/{}/tournaments",
@@ -69,14 +82,13 @@ impl IntervalWorker for PollSimData {
             ))
             .await?;
         ctx.db
-            .save(&elections.to_chron(EntityKind::SeasonTournaments, season)?)
+            .save(&all_tournaments.to_chron(EntityKind::SeasonTournaments, season)?)
             .await?;
-
         Ok(())
     }
 }
 
-pub async fn get_and_update_sim(ctx: &mut WorkerContext) -> anyhow::Result<()> {
+pub async fn get_and_update_sim(ctx: &mut WorkerContext) -> anyhow::Result<SimData> {
     let sim = ctx
         .client
         .fetch(&format!("https://api2.blaseball.com/sim"))
@@ -90,7 +102,7 @@ pub async fn get_and_update_sim(ctx: &mut WorkerContext) -> anyhow::Result<()> {
         season: sim.sim_data.current_season_id,
         day: sim.sim_data.current_day,
     });
-    Ok(())
+    Ok(sim)
 }
 
 #[derive(Deserialize)]
@@ -105,4 +117,6 @@ pub struct SimDataInner {
     pub current_season_id: Uuid,
     #[serde(rename = "currentDay")]
     pub current_day: i32,
+    #[serde(rename = "currentTournamentId")]
+    pub current_tournament_id: Option<Uuid>,
 }
