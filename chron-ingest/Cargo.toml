@@ -20,6 +20,7 @@ time = { version = "0.3.17", features = ["serde", "parsing"] }
 tokio = { version = "1.24.1", features = ["full"] }
 tokio-tungstenite = { version = "0.18.0", features = ["native-tls"] }
 uuid = { version = "1.2.2", features = ["v4", "serde"] }
+siphasher = "0.3.10"
 
 # todo: remove once import_qd is gone
 sqlx = { version = "0.6.2", features = ["json", "postgres", "time", "uuid", "runtime-tokio-native-tls", "sqlite", "decimal"] }

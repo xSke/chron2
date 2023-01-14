@@ -7,6 +7,8 @@ use uuid::Uuid;
 
 use crate::{http::DataClient, pusher::PusherHandle};
 
+pub mod assets;
+pub mod elections;
 pub mod games;
 pub mod posts;
 pub mod rosters;

@@ -343,6 +343,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "siphasher",
  "sqlx",
  "time",
  "tokio",

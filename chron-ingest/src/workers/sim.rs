@@ -18,6 +18,7 @@ impl IntervalWorker for PollSimData {
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
         let sim = get_and_update_sim(ctx).await?;
+        let (season, _) = ctx.season_day();
 
         let flagsmith = ctx
             .client
@@ -48,19 +49,6 @@ impl IntervalWorker for PollSimData {
             .save(&temporal.to_chron(EntityKind::Temporal, Uuid::default())?)
             .await?;
 
-        // todo: should we move this elseworker
-        let (season, _) = ctx.season_day();
-        let elections = ctx
-            .client
-            .fetch(&format!(
-                "https://api2.blaseball.com/seasons/{}/elections",
-                season
-            ))
-            .await?;
-        ctx.db
-            .save(&elections.to_chron(EntityKind::SeasonElections, season)?)
-            .await?;
-
         if let Some(tournament_id) = sim.sim_data.current_tournament_id {
             let elections = ctx
                 .client
@@ -84,6 +72,12 @@ impl IntervalWorker for PollSimData {
         ctx.db
             .save(&all_tournaments.to_chron(EntityKind::SeasonTournaments, season)?)
             .await?;
+
+        if let Some(banner_url) = sim.sim_data.banner {
+            let banner = ctx.client.fetch(&banner_url).await?;
+            ctx.db.save(&banner.to_asset_object()?).await?;
+        }
+
         Ok(())
     }
 }
@@ -119,4 +113,6 @@ pub struct SimDataInner {
     pub current_day: i32,
     #[serde(rename = "currentTournamentId")]
     pub current_tournament_id: Option<Uuid>,
+
+    pub banner: Option<String>,
 }

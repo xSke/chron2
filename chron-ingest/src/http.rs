@@ -10,6 +10,8 @@ use serde::de::DeserializeOwned;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::asset::Asset;
+
 #[derive(Clone)]
 pub struct DataClient {
     client: Client,
@@ -22,6 +24,8 @@ pub struct ClientResponse {
     pub timestamp_before: OffsetDateTime,
     pub timestamp_after: OffsetDateTime,
     pub etag: Option<String>,
+    pub content_type: Option<String>,
+    pub last_modified: Option<String>,
     pub data: Vec<u8>,
     pub status_code: StatusCode,
     pub was_cached: bool,
@@ -39,8 +43,26 @@ impl ClientResponse {
             data: parsed,
             kind,
             entity_id,
-            request_time: self.timestamp_after - self.timestamp_before,
-            timestamp: self.timestamp_before,
+            request_time: self.request_time(),
+            timestamp: self.timestamp(),
+        })
+    }
+
+    pub fn to_asset_object(&self) -> anyhow::Result<NewObject> {
+        let asset = Asset::new(
+            self.url.clone(),
+            self.last_modified.clone(),
+            self.content_type.clone(),
+            &self.data,
+        );
+        let value = serde_json::to_value(&asset)?;
+
+        Ok(NewObject {
+            kind: EntityKind::Asset,
+            entity_id: asset.id,
+            data: value,
+            timestamp: self.timestamp(),
+            request_time: self.request_time(),
         })
     }
 
@@ -89,11 +111,16 @@ impl DataClient {
         let timestamp_after = OffsetDateTime::now_utc();
 
         let url = response.url().clone();
-        // let server_date = response
-        //     .headers()
-        //     .get(header::DATE)
-        //     .and_then(|x| x.to_str().ok())
-        //     .map(|x| x.to_owned());
+        let last_modified = response
+            .headers()
+            .get(header::LAST_MODIFIED)
+            .and_then(|x| x.to_str().ok())
+            .map(|x| x.to_owned());
+        let content_type = response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|x| x.to_str().ok())
+            .map(|x| x.to_owned());
         let etag = response
             .headers()
             .get(header::ETAG)
@@ -129,6 +156,8 @@ impl DataClient {
             timestamp_after,
             etag,
             data,
+            content_type,
+            last_modified,
             status_code,
             was_cached: false,
         };

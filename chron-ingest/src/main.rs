@@ -11,6 +11,8 @@ use pusher::{pusher_connect, PusherMessage};
 use time::Duration;
 use uuid::Uuid;
 use workers::{
+    assets::PollAssets,
+    elections::PollElections,
     games::{PollAllGames, PollLiveGames},
     posts::PollPosts,
     rosters::{PollActiveRosters, PollAllLeagueData},
@@ -19,6 +21,7 @@ use workers::{
     IntervalWorker, SimState, WorkerContext,
 };
 
+pub mod asset;
 mod http;
 pub mod pusher;
 mod workers;
@@ -100,6 +103,8 @@ async fn main() -> anyhow::Result<()> {
     spawn(ctx.clone(), PollSimData);
     spawn(ctx.clone(), PollActiveRosters);
     spawn(ctx.clone(), PollAllLeagueData);
+    spawn(ctx.clone(), PollElections);
+    spawn(ctx.clone(), PollAssets);
 
     let mut rx = Box::pin(rx);
     while let Some(msg) = rx.next().await {
