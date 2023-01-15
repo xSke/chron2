@@ -1,9 +1,12 @@
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 
 use async_trait::async_trait;
 use chron_db::{models::EntityKind, NewObject};
+use futures::TryFutureExt;
 use serde::Deserialize;
 use uuid::Uuid;
+
+use crate::asset::fetch_and_save_asset;
 
 use super::{IntervalWorker, WorkerContext};
 
@@ -16,6 +19,7 @@ impl IntervalWorker for PollPosts {
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
+        let mut icons = HashSet::new();
         for page_idx in 0.. {
             let resp = ctx
                 .client
@@ -37,11 +41,21 @@ impl IntervalWorker for PollPosts {
                         data: post_value,
                     })
                     .await?;
+
+                if let Some(icon) = post.user.profile_pin_url {
+                    icons.insert(icon);
+                }
             }
 
             if page_idx >= page.total_pages - 1 {
                 break;
             }
+        }
+
+        for url in icons {
+            fetch_and_save_asset(ctx, &url)
+                .unwrap_or_else(|e| { dbg!(e); })
+                .await;
         }
 
         Ok(())
@@ -58,4 +72,11 @@ struct PostPage {
 #[derive(Deserialize)]
 struct Post {
     id: Uuid,
+    user: PostUser,
+}
+
+#[derive(Deserialize)]
+struct PostUser {
+    #[serde(rename = "profilePinUrl")]
+    profile_pin_url: Option<String>,
 }
