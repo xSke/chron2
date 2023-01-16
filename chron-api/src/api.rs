@@ -6,22 +6,16 @@ use axum::{
     Json,
 };
 use chron_db::{
-    models::{EntityKind, EntityVersion, GameEvent, PusherEvent},
-    queries::SortOrder,
+    models::{EntityKind, EntityVersion, GameEvent, IsoDateTime, PageToken, PusherEvent},
+    queries::{PaginatedResult, SortOrder},
 };
 use serde::{
     de::{self, Visitor},
-    Deserialize, Deserializer, Serialize,
+    Deserialize, Deserializer,
 };
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{AppError, AppState};
-
-#[derive(Serialize)]
-pub struct WrappedResponse<T: Serialize> {
-    items: Vec<T>,
-}
 
 #[derive(Deserialize)]
 pub struct GetGameEventsQuery {
@@ -32,6 +26,7 @@ pub struct GetGameEventsQuery {
     count: Option<u64>,
     #[serde(default)]
     order: SortOrder,
+    page: Option<PageToken>,
 }
 
 pub async fn get_game_events(
@@ -47,21 +42,22 @@ pub async fn get_game_events(
             after: q.after.map(|x| x.0),
             count: q.count.unwrap_or(5000).min(5000),
             order: q.order,
+            page: q.page,
         })
         .await?;
 
-    Ok(Json(events))
+    Ok(Json(events.items))
 }
 
 #[derive(Deserialize)]
 pub struct GetEventsQuery {
     channel: Option<String>,
-    // event: Option<String>,
     before: Option<IsoDateTime>,
     after: Option<IsoDateTime>,
     count: Option<u64>,
     #[serde(default)]
     order: SortOrder,
+    page: Option<PageToken>,
 }
 
 pub async fn get_events(
@@ -72,32 +68,45 @@ pub async fn get_events(
         .db
         .get_events(chron_db::queries::GetEventsQuery {
             channel: q.channel,
-            // event: q.event,
             before: q.before.map(|x| x.0),
             after: q.after.map(|x| x.0),
             count: q.count.unwrap_or(5000).min(5000),
             order: q.order,
+            page: q.page,
         })
         .await?;
 
-    Ok(Json(events))
+    Ok(Json(events.items))
 }
 
 #[derive(Deserialize)]
 pub struct GetEntitiesQuery {
     kind: EntityKind,
+    at: Option<IsoDateTime>,
+
+    #[serde(deserialize_with = "comma_separated", default)]
+    id: Vec<Uuid>,
+    #[serde(default)]
+    order: SortOrder,
+    page: Option<PageToken>,
 }
 
 pub async fn get_entities(
     State(ctx): State<AppState>,
     Query(q): Query<GetEntitiesQuery>,
-) -> Result<Json<WrappedResponse<EntityVersion>>, AppError> {
+) -> Result<Json<PaginatedResult<EntityVersion>>, AppError> {
     let events = ctx
         .db
-        .get_entities(chron_db::queries::GetEntitiesQuery { kind: q.kind })
+        .get_entities(chron_db::queries::GetEntitiesQuery {
+            kind: q.kind,
+            at: q.at.map(|x| x.0),
+            id: q.id,
+            order: q.order,
+            page: q.page,
+        })
         .await?;
 
-    Ok(Json(WrappedResponse { items: events }))
+    Ok(Json(events))
 }
 
 #[derive(Deserialize, Debug)]
@@ -111,13 +120,14 @@ pub struct GetVersionsQuery {
     pub count: Option<u64>,
     #[serde(default)]
     pub order: SortOrder,
-    // todo: page token
+
+    pub page: Option<PageToken>,
 }
 
 pub async fn get_versions(
     State(ctx): State<AppState>,
     Query(q): Query<GetVersionsQuery>,
-) -> Result<Json<WrappedResponse<EntityVersion>>, AppError> {
+) -> Result<Json<PaginatedResult<EntityVersion>>, AppError> {
     println!("{:?}", &q);
     let events = ctx
         .db
@@ -128,10 +138,11 @@ pub async fn get_versions(
             after: q.after.map(|x| x.0),
             count: q.count.unwrap_or(1000).min(1000),
             order: q.order,
+            page: q.page,
         })
         .await?;
 
-    Ok(Json(WrappedResponse { items: events }))
+    Ok(Json(events))
 }
 
 fn comma_separated<'de, V, T, D>(deserializer: D) -> Result<V, D::Error>
@@ -166,20 +177,4 @@ where
 
     let visitor = CommaSeparated(PhantomData, PhantomData);
     deserializer.deserialize_str(visitor)
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(transparent)]
-pub struct IsoDateTime(#[serde(with = "time::serde::rfc3339")] OffsetDateTime);
-
-impl From<OffsetDateTime> for IsoDateTime {
-    fn from(value: OffsetDateTime) -> Self {
-        IsoDateTime(value)
-    }
-}
-
-impl Into<OffsetDateTime> for IsoDateTime {
-    fn into(self) -> OffsetDateTime {
-        self.0
-    }
 }

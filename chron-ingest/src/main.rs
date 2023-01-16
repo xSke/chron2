@@ -5,10 +5,11 @@ use chron_db::{
     models::{EntityKind, PusherEvent},
     ChronDb, NewObject,
 };
-use futures::StreamExt;
+use futures::{StreamExt, TryFutureExt};
 use http::DataClient;
 use pusher::{pusher_connect, PusherMessage};
 use time::Duration;
+use tracing::{error, info};
 use uuid::Uuid;
 use workers::{
     assets::PollAssets,
@@ -36,10 +37,12 @@ fn spawn<T: IntervalWorker + 'static>(mut ctx: WorkerContext, mut w: T) {
         loop {
             interval.tick().await;
 
-            let res = w.tick(&mut ctx).await;
-            if let Err(e) = res {
-                dbg!(e);
-            }
+            w.tick(&mut ctx)
+                .unwrap_or_else(|e| {
+                    let type_name = std::any::type_name::<T>().split("::").last().unwrap();
+                    error!("error executing worker {}: {:?}", type_name, e);
+                })
+                .await;
         }
     });
 }
@@ -108,10 +111,11 @@ async fn main() -> anyhow::Result<()> {
 
     let mut rx = Box::pin(rx);
     while let Some(msg) = rx.next().await {
+        info!("received pusher message: {:?}", msg);
         if !msg.event.starts_with("pusher_internal:") {
-            if let Err(e) = handle_pusher(&mut ctx, msg).await {
-                dbg!(e);
-            }
+            handle_pusher(&mut ctx, msg)
+                .unwrap_or_else(|e| error!("{}", e))
+                .await;
         }
     }
 

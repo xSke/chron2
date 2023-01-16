@@ -128,13 +128,6 @@ impl DataClient {
             .map(|x| x.to_owned());
         let status_code = response.status();
 
-        println!(
-            "{} {} ({}s)",
-            response.status(),
-            response.url().to_string(),
-            (timestamp_after - timestamp_before).as_seconds_f64()
-        );
-
         let response = response.error_for_status()?;
 
         if response.status() == StatusCode::NOT_MODIFIED {

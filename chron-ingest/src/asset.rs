@@ -1,6 +1,7 @@
 use std::{hash::Hasher, str::FromStr};
 
 use base64::Engine;
+use chron_base::uuid_hash;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use siphasher::sip128::{Hasher128, SipHasher};
@@ -14,7 +15,8 @@ pub struct Asset {
     pub url: String,
     pub last_modified: Option<String>,
     pub content_type: Option<String>,
-    pub data: String, // base64 string
+    pub hash: Uuid,
+    pub data: String, // base64 string. todo: remove this, move to different table
 }
 
 impl Asset {
@@ -32,11 +34,14 @@ impl Asset {
         let engine = base64::engine::general_purpose::STANDARD;
         let encoded_data = engine.encode(data);
 
+        let data_hash = uuid_hash(data);
+
         Asset {
             id: url_hash,
             last_modified,
             content_type,
             url: url.to_string(),
+            hash: data_hash,
             data: encoded_data,
         }
     }

@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use chron_db::{models::EntityKind, NewObject};
-use futures::{stream, StreamExt, TryStreamExt};
+use futures::{stream, StreamExt, TryFutureExt};
 use serde::Deserialize;
+use tracing::error;
 use uuid::Uuid;
 
 use super::{IntervalWorker, WorkerContext};
@@ -25,11 +26,11 @@ impl IntervalWorker for PollSchedule {
 
         let x = resp.parse::<Vec<ScheduleDay>>()?;
         stream::iter(x)
-            .map(|d| self.fetch_schedule_hourly(ctx.clone(), d.local_date))
-            .buffer_unordered(4)
-            .inspect_err(|e| {
-                dbg!(&e);
+            .map(|d| {
+                self.fetch_schedule_hourly(ctx.clone(), d.local_date)
+                    .unwrap_or_else(|e| error!("{}", e))
             })
+            .buffer_unordered(4)
             .collect::<Vec<_>>()
             .await;
 

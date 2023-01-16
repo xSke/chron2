@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use chron_db::models::EntityKind;
-use futures::{stream, StreamExt};
+use futures::TryFutureExt;
 use tokio::time::interval;
+use tracing::error;
 
 use crate::asset::{fetch_and_save_asset, find_urls};
 
@@ -30,16 +31,12 @@ impl IntervalWorker for PollElections {
             .save(&elections.to_chron(EntityKind::SeasonElections, season)?)
             .await?;
 
-        stream::iter(find_urls(&elections.parse()?))
-            .for_each(|url| {
-                let ctx = &ctx;
-                async move {
-                    if let Err(e) = fetch_and_save_asset(&ctx, url.as_str()).await {
-                        dbg!(e);
-                    }
-                }
-            })
-            .await;
+        for url in find_urls(&elections.parse()?) {
+            fetch_and_save_asset(&ctx, url.as_str())
+                .unwrap_or_else(|e| error!("{}", e))
+                .await;
+        }
+
         Ok(())
     }
 }

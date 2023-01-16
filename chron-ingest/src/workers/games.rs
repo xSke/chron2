@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use chron_db::{models::EntityKind, NewObject};
 use futures::{stream, StreamExt};
 use serde::Deserialize;
+use tracing::error;
 use uuid::Uuid;
 
 use super::{IntervalWorker, WorkerContext};
@@ -134,15 +135,7 @@ impl IntervalWorker for PollLiveGames {
         )
         .map(|game_id| poll_single_game(ctx.clone(), game_id))
         .buffer_unordered(4)
-        .filter_map(|x| async move {
-            match x {
-                Ok(x) => Some(x),
-                Err(e) => {
-                    dbg!(&e);
-                    None
-                }
-            }
-        })
+        .filter_map(|x| async { x.map_err(|e| error!("{}", e)).ok() })
         .collect::<Vec<_>>()
         .await;
         self.finished_games

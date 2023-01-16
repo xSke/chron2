@@ -1,3 +1,6 @@
+use std::{fmt::Display, str::FromStr};
+
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type};
 use time::OffsetDateTime;
@@ -68,11 +71,112 @@ pub struct GameEvent {
 pub struct EntityVersion {
     pub kind: EntityKind,
     pub entity_id: Uuid,
-
-    #[serde(with = "time::serde::rfc3339")]
-    pub valid_from: OffsetDateTime,
-
-    // #[serde(with="time::serde::rfc3339")]
-    // pub valid_to: Option<OffsetDateTime>,
+    pub valid_from: IsoDateTime,
+    pub valid_to: Option<IsoDateTime>,
     pub data: serde_json::Value,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, sqlx::Type)]
+#[serde(transparent)]
+#[sqlx(transparent)]
+pub struct IsoDateTime(#[serde(with = "time::serde::rfc3339")] pub OffsetDateTime);
+
+impl From<OffsetDateTime> for IsoDateTime {
+    fn from(value: OffsetDateTime) -> Self {
+        IsoDateTime(value)
+    }
+}
+
+impl Into<OffsetDateTime> for IsoDateTime {
+    fn into(self) -> OffsetDateTime {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PageToken {
+    pub entity_id: Uuid,
+    pub timestamp: OffsetDateTime,
+}
+
+impl Display for PageToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = [0u8; 32];
+        buf[0..16].copy_from_slice(&self.timestamp.unix_timestamp_nanos().to_le_bytes());
+        buf[16..32].copy_from_slice(self.entity_id.as_bytes());
+
+        let engine = base64::engine::general_purpose::URL_SAFE;
+        f.write_str(&engine.encode(&buf))
+    }
+}
+
+impl FromStr for PageToken {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let engine = base64::engine::general_purpose::URL_SAFE;
+        let data = engine.decode(s)?;
+        if data.len() != 32 {
+            return Err(anyhow::anyhow!("invalid page token"));
+        }
+
+        let timestamp_nanos = i128::from_le_bytes(data[0..16].try_into().unwrap());
+        let timestamp = OffsetDateTime::from_unix_timestamp_nanos(timestamp_nanos)?;
+        let entity_id = Uuid::from_slice(&data[16..32])?;
+
+        Ok(PageToken {
+            entity_id,
+            timestamp,
+        })
+    }
+}
+
+impl Serialize for PageToken {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for PageToken {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let str = String::deserialize(deserializer)?;
+        PageToken::from_str(&str).map_err(|_| serde::de::Error::custom("invalid page token"))
+    }
+}
+
+pub trait HasPageToken {
+    fn page_token(&self) -> PageToken;
+}
+
+impl HasPageToken for EntityVersion {
+    fn page_token(&self) -> PageToken {
+        PageToken {
+            entity_id: self.entity_id,
+            timestamp: self.valid_from.0,
+        }
+    }
+}
+
+impl HasPageToken for GameEvent {
+    fn page_token(&self) -> PageToken {
+        PageToken {
+            entity_id: Uuid::default(),
+            timestamp: self.timestamp,
+        }
+    }
+}
+
+impl HasPageToken for PusherEvent {
+    fn page_token(&self) -> PageToken {
+        PageToken {
+            entity_id: Uuid::default(),
+            timestamp: self.timestamp,
+        }
+    }
 }

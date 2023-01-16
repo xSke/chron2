@@ -16,16 +16,7 @@ impl IntervalWorker for PollAssets {
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
-        let book = ctx
-            .client
-            .fetch(&format!(
-                "https://blaseball-texts.s3.us-west-2.amazonaws.com/forbiddenbook.json"
-            ))
-            .await?;
-        ctx.db
-            .save(&book.to_chron(EntityKind::ForbiddenBook, Uuid::default())?)
-            .await?;
-        ctx.db.save(&book.to_asset_object()?).await?;
+        save_book(ctx).await?;
 
         // todo: avoid duplication for where else we're saving this
         let flagsmith = ctx
@@ -38,4 +29,18 @@ impl IntervalWorker for PollAssets {
 
         Ok(())
     }
+}
+
+async fn save_book(ctx: &WorkerContext) -> anyhow::Result<()> {
+    let book = ctx
+        .client
+        .fetch(&format!(
+            "https://blaseball-texts.s3.us-west-2.amazonaws.com/forbiddenbook.json"
+        ))
+        .await?;
+    ctx.db
+        .save(&book.to_chron(EntityKind::ForbiddenBook, Uuid::default())?)
+        .await?;
+    ctx.db.save(&book.to_asset_object()?).await?;
+    Ok(())
 }

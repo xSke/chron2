@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use chron_db::{models::EntityKind, NewObject};
 use futures::TryFutureExt;
 use serde::Deserialize;
+use tracing::error;
 use uuid::Uuid;
 
 use crate::asset::fetch_and_save_asset;
@@ -54,7 +55,9 @@ impl IntervalWorker for PollPosts {
 
         for url in icons {
             fetch_and_save_asset(ctx, &url)
-                .unwrap_or_else(|e| { dbg!(e); })
+                .unwrap_or_else(|e| {
+                    error!("{}", e);
+                })
                 .await;
         }
 

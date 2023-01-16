@@ -12,6 +12,7 @@ use tower_http::{
     compression::CompressionLayer,
     cors::{Any, CorsLayer},
 };
+use tracing::info;
 
 mod api;
 
@@ -52,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/v0/game-events", get(api::get_game_events))
         .route("/v0/events", get(api::get_events))
-        // .route("/v2/entities", get(api::get_entities))
+        .route("/v0/entities", get(api::get_entities))
         .route("/v0/versions", get(api::get_versions))
         // todo: is the order here right?
         .layer(cors)
@@ -61,6 +62,8 @@ async fn main() -> anyhow::Result<()> {
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+
+    info!("starting api at {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await?;

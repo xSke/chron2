@@ -24,6 +24,8 @@ siphasher = "0.3.10"
 
 # todo: remove once import_qd is gone
 sqlx = { version = "0.6.2", features = ["json", "postgres", "time", "uuid", "runtime-tokio-native-tls", "sqlite", "decimal"] }
+tracing = "0.1.37"
+tracing-futures = "0.2.5"
 
 
 [[bin]]

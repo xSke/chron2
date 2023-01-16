@@ -10,6 +10,7 @@ use futures::{
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tracing::{error, info};
 
 #[derive(Deserialize, Debug)]
 pub struct SerializedPusherMessage {
@@ -78,7 +79,7 @@ async fn single_ws_worker(
     incoming: Pin<&mut impl Sink<(OffsetDateTime, Message)>>,
     mut receiver: Pin<&mut impl Stream<Item = String>>,
 ) -> anyhow::Result<()> {
-    println!("connecting...");
+    info!("connecting to pusher...");
     let url = format!("wss://ws-us3.pusher.com/app/{}?protocol=7", pusher_key);
     let (ws, _) = connect_async(&url).await?;
 
@@ -103,7 +104,6 @@ async fn single_ws_worker(
             msg = rx_fut => {
                 let timestamp = OffsetDateTime::now_utc();
                 if let Some(Ok(msg)) = msg {
-                    dbg!(&msg);
                     // we wanna defer parsing this to the other end of the queue to maximize recv throughput
                     incoming.send((timestamp, msg)).await.map_err(|_| anyhow!("could not send"))?;
                 } else {
@@ -113,7 +113,7 @@ async fn single_ws_worker(
             msg = receiver.next().fuse() => {
                 if let Some(channel) = msg {
                     if subscribed_channels.insert(channel.clone()) {
-                        println!("subscribing to {}", &channel);
+                        info!("subscribing to {}", &channel);
                         ws_tx.send(subscribe_command(channel)).await?;
                     }
                 }
@@ -138,7 +138,6 @@ impl PusherHandle {
 pub async fn pusher_connect(
     pusher_key: String,
 ) -> anyhow::Result<(PusherHandle, impl Stream<Item = PusherMessage>)> {
-    // let pusher_key =
     let (sub_tx, sub_rx) = unbounded();
     let (recv_tx, recv_rx) = unbounded();
 
@@ -156,7 +155,7 @@ pub async fn pusher_connect(
 
             if let Err(e) = single_ws_worker(&pusher_key, recv_tx.as_mut(), send_rx.as_mut()).await
             {
-                dbg!(e);
+                error!("error in pusher worker: {}", e);
             }
         }
     });

@@ -8,6 +8,7 @@ use chron_db::{models::EntityKind, NewObject};
 use futures::{stream, StreamExt};
 use serde::Deserialize;
 use tokio::time::interval;
+use tracing::error;
 use uuid::Uuid;
 
 use super::{IntervalWorker, WorkerContext};
@@ -114,15 +115,7 @@ async fn fetch_players(
     stream::iter(player_ids)
         .map(|player_id| fetch_player(ctx.clone(), player_id))
         .buffer_unordered(4)
-        .filter_map(|x| async {
-            match x {
-                Ok(x) => Some(x),
-                Err(e) => {
-                    dbg!(e);
-                    None
-                }
-            }
-        })
+        .filter_map(|x| async { x.map_err(|e| error!("{}", e)).ok() })
         .collect::<Vec<_>>()
         .await
 }
@@ -147,15 +140,7 @@ async fn fetch_teams(ctx: &mut WorkerContext, team_ids: impl Iterator<Item = Uui
     stream::iter(team_ids)
         .map(|team_id| fetch_team(ctx.clone(), team_id))
         .buffer_unordered(4)
-        .filter_map(|x| async {
-            match x {
-                Ok(x) => Some(x),
-                Err(e) => {
-                    dbg!(e);
-                    None
-                }
-            }
-        })
+        .filter_map(|x| async { x.map_err(|e| error!("{}", e)).ok() })
         .collect::<Vec<_>>()
         .await
 }
