@@ -227,7 +227,7 @@ impl ChronDb {
             qq = qq
                 .and_where(Expr::val(at).gte(Expr::col(Idens::ValidFrom)))
                 .and_where(Expr::val(at).lt(Expr::cust_with_expr(
-                    "coalesce($1, infinity)",
+                    "coalesce($1, 'infinity')",
                     Expr::col(Idens::ValidTo),
                 )))
                 .to_owned();
