@@ -32,7 +32,7 @@ pub struct GetGameEventsQuery {
 pub async fn get_game_events(
     State(ctx): State<AppState>,
     Query(q): Query<GetGameEventsQuery>,
-) -> Result<Json<Vec<GameEvent>>, AppError> {
+) -> Result<Json<PaginatedResult<GameEvent>>, AppError> {
     let events = ctx
         .db
         .get_game_events(chron_db::queries::GetGameEventsQuery {
@@ -46,7 +46,7 @@ pub async fn get_game_events(
         })
         .await?;
 
-    Ok(Json(events.items))
+    Ok(Json(events))
 }
 
 #[derive(Deserialize)]
@@ -63,7 +63,7 @@ pub struct GetEventsQuery {
 pub async fn get_events(
     State(ctx): State<AppState>,
     Query(q): Query<GetEventsQuery>,
-) -> Result<Json<Vec<PusherEvent>>, AppError> {
+) -> Result<Json<PaginatedResult<PusherEvent>>, AppError> {
     let events = ctx
         .db
         .get_events(chron_db::queries::GetEventsQuery {
@@ -76,7 +76,7 @@ pub async fn get_events(
         })
         .await?;
 
-    Ok(Json(events.items))
+    Ok(Json(events))
 }
 
 #[derive(Deserialize)]
