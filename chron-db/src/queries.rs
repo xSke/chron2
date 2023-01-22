@@ -117,7 +117,7 @@ impl ChronDb {
         if let Some(search) = q.search {
             qq = qq
                 .and_where(Expr::cust_with_exprs(
-                    "$1 @@ to_tsquery($2)",
+                    "$1 @@ websearch_to_tsquery($2)",
                     [Expr::col(Idens::SearchTsv).into(), Expr::val(search).into()],
                 ))
                 .to_owned();
