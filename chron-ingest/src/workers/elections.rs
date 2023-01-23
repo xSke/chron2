@@ -29,9 +29,11 @@ impl IntervalWorker for PollElections {
                 season
             ))
             .await?;
-        ctx.db
-            .save(&elections.to_chron(EntityKind::SeasonElections, season)?)
-            .await?;
+
+        let mut new_obj = elections.to_chron(EntityKind::SeasonElections, season)?;
+        strip_team_data_from_election_results(&mut new_obj.data);
+
+        ctx.db.save(&new_obj).await?;
 
         for url in find_urls(&elections.parse()?) {
             fetch_and_save_asset(&ctx, url.as_str())
@@ -40,6 +42,25 @@ impl IntervalWorker for PollElections {
         }
 
         Ok(())
+    }
+}
+
+fn strip_team_data_from_election_results(data: &mut serde_json::Value) {
+    if let Some(obj) = data.as_object_mut() {
+        obj.insert(
+            "currentUserFavoriteTeam".to_string(),
+            serde_json::Value::Null,
+        );
+        if let Some(blessings) = obj.get_mut("blessings").and_then(|x| x.as_array_mut()) {
+            for blessing in blessings {
+                if let Some(obj) = blessing.as_object_mut() {
+                    obj.insert(
+                        "favoriteTeamTopOptionIds".to_string(),
+                        serde_json::Value::Array(Vec::new()),
+                    );
+                }
+            }
+        }
     }
 }
 
