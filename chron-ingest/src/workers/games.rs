@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chron_db::{models::EntityKind, NewObject};
 use futures::{stream, StreamExt};
 use serde::Deserialize;
-use tracing::error;
+use tracing::{error};
 use uuid::Uuid;
 
 use super::{IntervalWorker, WorkerContext};
@@ -27,8 +27,25 @@ impl IntervalWorker for PollAllGames {
             ))
             .await?;
 
-        for game_value in resp.parse::<Vec<serde_json::Value>>()? {
-            let game: Game = serde_json::from_value(game_value.clone())?;
+        // parse all games first
+        let games = resp
+            .parse::<Vec<serde_json::Value>>()?
+            .into_iter()
+            .map(|val| serde_json::from_value::<Game>(val.clone()).map(|x| (val, x)))
+            .flatten()
+            .collect::<Vec<_>>();
+
+        // subscribe to pending games before saving everything
+        for (_, game) in &games {
+            if !game.complete && game.day < day + 3 {
+                ctx.pusher
+                    .subscribe(format!("game-feed-{}", game.id))
+                    .await?;
+            }
+        }
+
+        // then save all games
+        for (game_value, game) in games {
             ctx.db
                 .save(&NewObject {
                     kind: EntityKind::Game,
@@ -38,12 +55,6 @@ impl IntervalWorker for PollAllGames {
                     timestamp: resp.timestamp(),
                 })
                 .await?;
-
-            if !game.complete && game.day < day + 2 {
-                ctx.pusher
-                    .subscribe(format!("game-feed-{}", game.id))
-                    .await?;
-            }
         }
 
         Ok(())
