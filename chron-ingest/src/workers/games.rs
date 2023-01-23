@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chron_db::{models::EntityKind, NewObject};
 use futures::{stream, StreamExt};
 use serde::Deserialize;
-use tracing::{error};
+use tracing::error;
 use uuid::Uuid;
 
 use super::{IntervalWorker, WorkerContext};

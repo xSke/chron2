@@ -13,7 +13,7 @@ use tracing::{error, info};
 use uuid::Uuid;
 use workers::{
     assets::PollAssets,
-    elections::PollElections,
+    elections::{PollBlessingPreferences, PollElections},
     games::{PollAllGames, PollLiveGames},
     posts::PollPosts,
     rosters::{PollActiveRosters, PollAllLeagueData},
@@ -107,6 +107,7 @@ async fn main() -> anyhow::Result<()> {
     spawn(ctx.clone(), PollActiveRosters);
     spawn(ctx.clone(), PollAllLeagueData);
     spawn(ctx.clone(), PollElections);
+    spawn(ctx.clone(), PollBlessingPreferences);
     spawn(ctx.clone(), PollAssets);
 
     let mut rx = Box::pin(rx);

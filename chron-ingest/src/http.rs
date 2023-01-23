@@ -6,7 +6,7 @@ use reqwest::{
     header::{self, HeaderMap, HeaderValue},
     Client, ClientBuilder, StatusCode, Url,
 };
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -96,6 +96,20 @@ impl DataClient {
         })
     }
 
+    pub async fn change_favorite_team(&self, team_id: Uuid) -> anyhow::Result<()> {
+        let request = self
+            .client
+            .put("https://api2.blaseball.com/users/")
+            .json(&PutUserRequest {
+                favorite_team: team_id,
+            })
+            .send()
+            .await?;
+        request.error_for_status()?;
+
+        Ok(())
+    }
+
     pub async fn fetch(&self, orig_url: &str) -> anyhow::Result<ClientResponse> {
         let mut request = self.client.get(orig_url);
         if let Some(cached_etag) = self
@@ -162,4 +176,10 @@ impl DataClient {
 
         Ok(sr)
     }
+}
+
+#[derive(Serialize)]
+struct PutUserRequest {
+    #[serde(rename = "favoriteTeam")]
+    favorite_team: Uuid,
 }

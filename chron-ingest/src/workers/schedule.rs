@@ -49,12 +49,20 @@ impl PollSchedule {
             ))
             .await?;
 
-        for game_value in resp
+        for mut game_value in resp
             .parse::<Vec<ScheduleHour>>()?
             .into_iter()
             .flat_map(|x| x.bet_datas)
         {
             let game_id = serde_json::from_value::<BetData>(game_value.clone())?.game_id;
+
+            // clean up for team switching
+            if let Some(obj) = game_value.as_object_mut() {
+                obj.insert(
+                    "favoriteTeamMatch".to_string(),
+                    serde_json::Value::Bool(false),
+                );
+            }
 
             ctx.db
                 .save(&NewObject {
