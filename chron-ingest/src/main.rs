@@ -14,7 +14,7 @@ use uuid::Uuid;
 use workers::{
     assets::PollAssets,
     elections::{PollBlessingPreferences, PollElections},
-    games::{PollAllGames, PollLiveGames},
+    games::{PollAllGameOutcomes, PollAllGames, PollLiveGames},
     posts::PollPosts,
     rosters::{PollActiveRosters, PollAllLeagueData},
     schedule::PollSchedule,
@@ -109,6 +109,7 @@ async fn main() -> anyhow::Result<()> {
     spawn(ctx.clone(), PollElections);
     spawn(ctx.clone(), PollBlessingPreferences);
     spawn(ctx.clone(), PollAssets);
+    spawn(ctx.clone(), PollAllGameOutcomes);
 
     let mut rx = Box::pin(rx);
     while let Some(msg) = rx.next().await {

@@ -113,21 +113,7 @@ async fn poll_single_game(ctx: WorkerContext, game_id: Uuid) -> anyhow::Result<G
         .save(&box_score.to_chron(EntityKind::BoxScore, game_id)?)
         .await?;
 
-    let outcomes = ctx
-        .client
-        .fetch(&format!(
-            "https://api2.blaseball.com/seasons/{}/games/{}/outcomes",
-            season, game_id
-        ))
-        .await?;
-
-    // effectively, "if not []"
-    if outcomes.data.len() > 2 {
-        ctx.db
-            .save(&outcomes.to_chron(EntityKind::GameOutcomes, game_id)?)
-            .await?;
-        // todo: also have a "GameOutcome", singular?
-    }
+    save_outcomes(&ctx, season, game_id).await?;
 
     Ok(game_struct)
 }
@@ -172,6 +158,25 @@ impl IntervalWorker for PollLiveGames {
     }
 }
 
+async fn save_outcomes(ctx: &WorkerContext, season: Uuid, game_id: Uuid) -> anyhow::Result<()> {
+    let outcomes = ctx
+        .client
+        .fetch(&format!(
+            "https://api2.blaseball.com/seasons/{}/games/{}/outcomes",
+            season, game_id
+        ))
+        .await?;
+
+    // effectively, "if not []"
+    if outcomes.data.len() > 2 {
+        ctx.db
+            .save(&outcomes.to_chron(EntityKind::GameOutcomes, game_id)?)
+            .await?;
+        // todo: also have a "GameOutcome", singular?
+    }
+    Ok(())
+}
+
 #[derive(Debug, Deserialize)]
 struct Game {
     id: Uuid,
@@ -183,4 +188,34 @@ struct Game {
 struct LiveGames {
     #[serde(rename = "gameIds")]
     game_ids: Vec<Uuid>,
+}
+
+pub struct PollAllGameOutcomes;
+
+#[async_trait]
+impl IntervalWorker for PollAllGameOutcomes {
+    fn interval() -> tokio::time::Interval {
+        // do this very infrequently
+        tokio::time::interval(Duration::from_secs(60 * 60))
+    }
+
+    async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
+        let (season, _) = ctx.season_day();
+        let games = ctx
+            .client
+            .fetch(&format!(
+                "https://api2.blaseball.com/seasons/{}/games",
+                season
+            ))
+            .await?
+            .parse::<Vec<Game>>()?;
+
+        for game in games {
+            if game.complete {
+                save_outcomes(&ctx, season, game.id).await?;
+            }
+        }
+
+        Ok(())
+    }
 }
