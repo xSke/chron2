@@ -65,17 +65,23 @@ impl IntervalWorker for PollAllGames {
 
 pub struct PollLiveGames {
     finished_games: HashSet<Uuid>,
+    i: u32,
 }
 
 impl PollLiveGames {
     pub fn new() -> PollLiveGames {
         PollLiveGames {
             finished_games: HashSet::new(),
+            i: 0,
         }
     }
 }
 
-async fn poll_single_game(ctx: WorkerContext, game_id: Uuid) -> anyhow::Result<Game> {
+async fn poll_single_game(
+    ctx: WorkerContext,
+    game_id: Uuid,
+    poll_extra: bool,
+) -> anyhow::Result<Game> {
     let (season, _) = ctx.season_day();
 
     let game = ctx
@@ -103,19 +109,21 @@ async fn poll_single_game(ctx: WorkerContext, game_id: Uuid) -> anyhow::Result<G
         })
         .await?;
 
-    // todo: do we really need to poll these often
-    let box_score = ctx
-        .client
-        .fetch(&format!(
-            "https://api2.blaseball.com/seasons/{}/games/{}/boxScore",
-            season, game_id
-        ))
-        .await?;
-    ctx.db
-        .save(&box_score.to_chron(EntityKind::BoxScore, game_id)?)
-        .await?;
+    if poll_extra {
+        // todo: do we really need to poll these often
+        let box_score = ctx
+            .client
+            .fetch(&format!(
+                "https://api2.blaseball.com/seasons/{}/games/{}/boxScore",
+                season, game_id
+            ))
+            .await?;
+        ctx.db
+            .save(&box_score.to_chron(EntityKind::BoxScore, game_id)?)
+            .await?;
 
-    save_outcomes(&ctx, season, game_id).await?;
+        save_outcomes(&ctx, season, game_id).await?;
+    }
 
     Ok(game_struct)
 }
@@ -143,19 +151,26 @@ impl IntervalWorker for PollLiveGames {
                 .await?;
         }
 
+        let poll_extra = self.i % 2 == 0;
+
         let games = stream::iter(
             game_ids
                 .into_iter()
                 .filter(|x| !self.finished_games.contains(x)),
         )
-        .map(|game_id| poll_single_game(ctx.clone(), game_id))
+        .map(|game_id| poll_single_game(ctx.clone(), game_id, poll_extra))
         .buffer_unordered(2)
         .filter_map(|x| async { x.map_err(|e| error!("{}", e)).ok() })
         .collect::<Vec<_>>()
         .await;
-        self.finished_games
-            .extend(games.iter().filter(|g| g.complete).map(|x| x.id));
 
+        if poll_extra {
+            // only mark a game as properly finished if we've polled extra post-completion
+            self.finished_games
+                .extend(games.iter().filter(|g| g.complete).map(|x| x.id));
+        }
+
+        self.i += 1;
         Ok(())
     }
 }
