@@ -123,7 +123,7 @@ async fn poll_single_game(ctx: WorkerContext, game_id: Uuid) -> anyhow::Result<G
 #[async_trait]
 impl IntervalWorker for PollLiveGames {
     fn interval() -> tokio::time::Interval {
-        tokio::time::interval(Duration::from_secs(5))
+        tokio::time::interval(Duration::from_secs(8))
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
@@ -149,7 +149,7 @@ impl IntervalWorker for PollLiveGames {
                 .filter(|x| !self.finished_games.contains(x)),
         )
         .map(|game_id| poll_single_game(ctx.clone(), game_id))
-        .buffer_unordered(4)
+        .buffer_unordered(2)
         .filter_map(|x| async { x.map_err(|e| error!("{}", e)).ok() })
         .collect::<Vec<_>>()
         .await;
