@@ -113,6 +113,22 @@ async fn poll_single_game(ctx: WorkerContext, game_id: Uuid) -> anyhow::Result<G
         .save(&box_score.to_chron(EntityKind::BoxScore, game_id)?)
         .await?;
 
+    let outcomes = ctx
+        .client
+        .fetch(&format!(
+            "https://api2.blaseball.com/seasons/{}/games/{}/outcomes",
+            season, game_id
+        ))
+        .await?;
+
+    // effectively, "if not []"
+    if outcomes.data.len() > 2 {
+        ctx.db
+            .save(&outcomes.to_chron(EntityKind::GameOutcomes, game_id)?)
+            .await?;
+        // todo: also have a "GameOutcome", singular?
+    }
+
     Ok(game_struct)
 }
 
