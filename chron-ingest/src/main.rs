@@ -25,6 +25,7 @@ use workers::{
 pub mod asset;
 mod http;
 pub mod pusher;
+pub mod util;
 mod workers;
 
 fn spawn<T: IntervalWorker + 'static>(mut ctx: WorkerContext, mut w: T) {

@@ -29,6 +29,7 @@ pub enum EntityKind {
     ForbiddenBook = 17,
     TeamBlessingPreferences = 18,
     GameOutcomes = 19,
+    GameOutcome = 20,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]

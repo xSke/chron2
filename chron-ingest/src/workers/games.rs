@@ -7,6 +7,8 @@ use serde::Deserialize;
 use tracing::error;
 use uuid::Uuid;
 
+use crate::util::get_uuid;
+
 use super::{IntervalWorker, WorkerContext};
 
 pub struct PollAllGames;
@@ -158,25 +160,6 @@ impl IntervalWorker for PollLiveGames {
     }
 }
 
-async fn save_outcomes(ctx: &WorkerContext, season: Uuid, game_id: Uuid) -> anyhow::Result<()> {
-    let outcomes = ctx
-        .client
-        .fetch(&format!(
-            "https://api2.blaseball.com/seasons/{}/games/{}/outcomes",
-            season, game_id
-        ))
-        .await?;
-
-    // effectively, "if not []"
-    if outcomes.data.len() > 2 {
-        ctx.db
-            .save(&outcomes.to_chron(EntityKind::GameOutcomes, game_id)?)
-            .await?;
-        // todo: also have a "GameOutcome", singular?
-    }
-    Ok(())
-}
-
 #[derive(Debug, Deserialize)]
 struct Game {
     id: Uuid,
@@ -218,4 +201,39 @@ impl IntervalWorker for PollAllGameOutcomes {
 
         Ok(())
     }
+}
+
+async fn save_outcomes(ctx: &WorkerContext, season: Uuid, game_id: Uuid) -> anyhow::Result<()> {
+    let resp = ctx
+        .client
+        .fetch(&format!(
+            "https://api2.blaseball.com/seasons/{}/games/{}/outcomes",
+            season, game_id
+        ))
+        .await?;
+
+    let outcome_values = resp.parse::<Vec<serde_json::Value>>()?;
+
+    // don't bother saving empty arrays all the time
+    if outcome_values.len() > 0 {
+        ctx.db
+            .save(&resp.to_chron(EntityKind::GameOutcomes, game_id)?)
+            .await?;
+    }
+
+    for outcome in outcome_values {
+        if let Some(id) = get_uuid(&outcome, "id") {
+            ctx.db
+                .save(&NewObject {
+                    kind: EntityKind::GameOutcome,
+                    entity_id: id,
+                    data: outcome,
+                    timestamp: resp.timestamp(),
+                    request_time: resp.request_time(),
+                })
+                .await?;
+        }
+    }
+
+    Ok(())
 }
