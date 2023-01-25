@@ -1,7 +1,7 @@
 use std::{collections::HashSet, time::Duration};
 
 use async_trait::async_trait;
-use chron_db::{models::EntityKind, NewObject};
+use chron_db::{models::EntityKind, NewObject, queries::GetEntitiesQuery};
 use futures::{stream, StreamExt};
 use serde::Deserialize;
 use tracing::error;
@@ -10,6 +10,37 @@ use uuid::Uuid;
 use crate::util::get_uuid;
 
 use super::{IntervalWorker, WorkerContext};
+
+pub struct PusherCatchup;
+
+#[async_trait]
+impl IntervalWorker for PusherCatchup {
+    fn interval() -> tokio::time::Interval {
+        tokio::time::interval(Duration::from_secs(60))
+        
+    }
+
+    async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
+        let entities = ctx.db.get_entities(GetEntitiesQuery {
+at: None,
+id: Vec::new(),
+kind: EntityKind::Game,
+order: chron_db::queries::SortOrder::Asc,
+page: None
+        }).await?;
+
+        for item in entities.items {
+            let game = serde_json::from_value::<Game>(item.data)?;
+            if !game.complete {
+                ctx.pusher
+                    .subscribe(format!("game-feed-{}", game.id))
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+}
 
 pub struct PollAllGames;
 
@@ -109,7 +140,7 @@ async fn poll_single_game(
         })
         .await?;
 
-    if poll_extra {
+    if poll_extra && false {
         // todo: do we really need to poll these often
         let box_score = ctx
             .client
