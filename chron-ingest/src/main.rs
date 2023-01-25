@@ -113,6 +113,8 @@ async fn main() -> anyhow::Result<()> {
         // spawn(ctx.clone(), PollBlessingPreferences);
         spawn(ctx.clone(), PollAssets);
         // spawn(ctx.clone(), PollAllGameOutcomes);
+
+        spawn(ctx.clone(), PusherCatchup);
     } else {
         spawn(ctx.clone(), PusherCatchup);
     }
