@@ -9,6 +9,8 @@ use uuid::Uuid;
 pub struct ChronConfig {
     pub database_uri: String,
     pub auth_cookie: String,
+    #[serde(default)]
+    pub crisis_mode: bool,
 }
 
 pub fn load_config() -> anyhow::Result<ChronConfig> {

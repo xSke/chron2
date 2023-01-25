@@ -97,21 +97,25 @@ async fn main() -> anyhow::Result<()> {
             day: -1,
         })),
     };
-    // doing this here is a bit nasty but eh
-    // workers::sim::get_and_update_sim(&mut ctx).await?;
 
-    spawn(ctx.clone(), PusherCatchup);
-    // spawn(ctx.clone(), PollAllGames);
-    // spawn(ctx.clone(), PollLiveGames::new());
-    // spawn(ctx.clone(), PollSchedule);
-    // spawn(ctx.clone(), PollPosts);
-    // spawn(ctx.clone(), PollSimData);
-    // spawn(ctx.clone(), PollActiveRosters);
-    // spawn(ctx.clone(), PollAllLeagueData);
-    // spawn(ctx.clone(), PollElections);
-    // spawn(ctx.clone(), PollBlessingPreferences);
-    // spawn(ctx.clone(), PollAssets);
-    // spawn(ctx.clone(), PollAllGameOutcomes);
+    if config.crisis_mode {
+        // doing this here is a bit nasty but eh
+        workers::sim::get_and_update_sim(&mut ctx).await?;
+
+        spawn(ctx.clone(), PollAllGames);
+        spawn(ctx.clone(), PollLiveGames::new());
+        spawn(ctx.clone(), PollSchedule);
+        spawn(ctx.clone(), PollPosts);
+        spawn(ctx.clone(), PollSimData);
+        spawn(ctx.clone(), PollActiveRosters);
+        spawn(ctx.clone(), PollAllLeagueData);
+        spawn(ctx.clone(), PollElections);
+        spawn(ctx.clone(), PollBlessingPreferences);
+        spawn(ctx.clone(), PollAssets);
+        spawn(ctx.clone(), PollAllGameOutcomes);
+    } else {
+        spawn(ctx.clone(), PusherCatchup);
+    }
 
     let mut rx = Box::pin(rx);
     while let Some(msg) = rx.next().await {
