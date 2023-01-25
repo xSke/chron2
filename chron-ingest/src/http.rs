@@ -8,6 +8,7 @@ use reqwest::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use time::OffsetDateTime;
+use tracing::info;
 use uuid::Uuid;
 
 use crate::asset::Asset;
@@ -123,6 +124,7 @@ impl DataClient {
         let timestamp_before = OffsetDateTime::now_utc();
         let response = request.send().await?;
         let timestamp_after = OffsetDateTime::now_utc();
+        info!("{} {}", response.status(), orig_url);
 
         let url = response.url().clone();
         let last_modified = response

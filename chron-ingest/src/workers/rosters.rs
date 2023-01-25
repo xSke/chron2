@@ -141,7 +141,7 @@ async fn fetch_player(ctx: WorkerContext, player_id: Uuid) -> anyhow::Result<Pla
 async fn fetch_teams(ctx: &mut WorkerContext, team_ids: impl Iterator<Item = Uuid>) -> Vec<Team> {
     stream::iter(team_ids)
         .map(|team_id| fetch_team(ctx.clone(), team_id))
-        .buffer_unordered(4)
+        .buffer_unordered(1)
         .filter_map(|x| async { x.map_err(|e| error!("{}", e)).ok() })
         .collect::<Vec<_>>()
         .await
@@ -159,6 +159,8 @@ async fn fetch_team(ctx: WorkerContext, team_id: Uuid) -> anyhow::Result<Team> {
     ctx.db
         .save(&resp.to_chron(EntityKind::Team, team_id)?)
         .await?;
+
+    tokio::time::sleep(Duration::from_millis(1000)).await;
 
     Ok(resp.parse()?)
 }

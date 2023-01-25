@@ -98,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
         })),
     };
 
-    if config.crisis_mode {
+    if !config.crisis_mode {
         // doing this here is a bit nasty but eh
         workers::sim::get_and_update_sim(&mut ctx).await?;
 
