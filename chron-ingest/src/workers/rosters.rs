@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use chron_db::{models::EntityKind, NewObject};
 use futures::{stream, StreamExt};
 use serde::Deserialize;
-use tokio::time::interval;
+use tokio::time::{interval, interval_at, Instant};
 use tracing::error;
 use uuid::Uuid;
 
@@ -18,7 +18,7 @@ pub struct PollActiveRosters;
 #[async_trait]
 impl IntervalWorker for PollActiveRosters {
     fn interval() -> tokio::time::Interval {
-        interval(Duration::from_secs(60*10))
+        interval(Duration::from_secs(60 * 15))
     }
 
     async fn tick(&mut self, ctx: &mut super::WorkerContext) -> anyhow::Result<()> {
@@ -59,7 +59,7 @@ pub struct PollAllLeagueData;
 #[async_trait]
 impl IntervalWorker for PollAllLeagueData {
     fn interval() -> tokio::time::Interval {
-        interval(Duration::from_secs(60 * 60))
+        interval_at(Instant::now() + Duration::from_secs(60*10), Duration::from_secs(60 * 60))
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
