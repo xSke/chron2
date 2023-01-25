@@ -159,7 +159,7 @@ impl IntervalWorker for PollLiveGames {
                 .filter(|x| !self.finished_games.contains(x)),
         )
         .map(|game_id| poll_single_game(ctx.clone(), game_id, poll_extra))
-        .buffer_unordered(2)
+        .buffer_unordered(1)
         .filter_map(|x| async { x.map_err(|e| error!("{}", e)).ok() })
         .collect::<Vec<_>>()
         .await;
