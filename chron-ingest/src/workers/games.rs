@@ -39,7 +39,7 @@ impl IntervalWorker for PollAllGames {
 
         // subscribe to pending games before saving everything
         for (_, game) in &games {
-            if !game.complete && game.day < day + 3 {
+            if !game.complete && game.day < day + 15 {
                 ctx.pusher
                     .subscribe(format!("game-feed-{}", game.id))
                     .await?;
