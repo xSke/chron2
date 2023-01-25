@@ -13,7 +13,7 @@ pub struct PollSimData;
 #[async_trait]
 impl IntervalWorker for PollSimData {
     fn interval() -> tokio::time::Interval {
-        interval(Duration::from_secs(15))
+        interval(Duration::from_secs(60))
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {

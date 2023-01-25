@@ -131,7 +131,7 @@ async fn poll_single_game(
 #[async_trait]
 impl IntervalWorker for PollLiveGames {
     fn interval() -> tokio::time::Interval {
-        tokio::time::interval(Duration::from_secs(8))
+        tokio::time::interval(Duration::from_secs(15))
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
@@ -151,7 +151,7 @@ impl IntervalWorker for PollLiveGames {
                 .await?;
         }
 
-        let poll_extra = self.i % 2 == 0;
+        let poll_extra = self.i % 4 == 0;
 
         let games = stream::iter(
             game_ids

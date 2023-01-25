@@ -18,7 +18,7 @@ pub struct PollActiveRosters;
 #[async_trait]
 impl IntervalWorker for PollActiveRosters {
     fn interval() -> tokio::time::Interval {
-        interval(Duration::from_secs(60))
+        interval(Duration::from_secs(60*10))
     }
 
     async fn tick(&mut self, ctx: &mut super::WorkerContext) -> anyhow::Result<()> {
@@ -59,28 +59,28 @@ pub struct PollAllLeagueData;
 #[async_trait]
 impl IntervalWorker for PollAllLeagueData {
     fn interval() -> tokio::time::Interval {
-        interval(Duration::from_secs(60 * 15))
+        interval(Duration::from_secs(60 * 60))
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
         // first, fetch all the teams we know of
         let mut team_ids: HashSet<Uuid> =
             HashSet::from_iter(ctx.db.get_all_entity_ids(EntityKind::Team).await?);
-        team_ids.extend(
-            include_str!("known_team_ids.txt")
-                .split("\n")
-                .flat_map(|x| x.trim().parse::<Uuid>()),
-        );
+        // team_ids.extend(
+        //     include_str!("known_team_ids.txt")
+        //         .split("\n")
+        //         .flat_map(|x| x.trim().parse::<Uuid>()),
+        // );
         let teams = fetch_teams(ctx, team_ids.iter().cloned()).await;
 
         // then, collect all the players we know of
         let mut player_ids: HashSet<Uuid> =
             HashSet::from_iter(ctx.db.get_all_entity_ids(EntityKind::Player).await?);
-        player_ids.extend(
-            include_str!("known_player_ids.txt")
-                .split("\n")
-                .flat_map(|x| x.trim().parse::<Uuid>()),
-        );
+        // player_ids.extend(
+        //     include_str!("known_player_ids.txt")
+        //         .split("\n")
+        //         .flat_map(|x| x.trim().parse::<Uuid>()),
+        // );
         player_ids.extend(teams.iter().flat_map(|x| x.roster.iter().map(|x| x.id)));
         let players = fetch_players(ctx, player_ids.into_iter()).await;
 
@@ -114,7 +114,7 @@ async fn fetch_players(
 ) -> Vec<PlayerData> {
     stream::iter(player_ids)
         .map(|player_id| fetch_player(ctx.clone(), player_id))
-        .buffer_unordered(4)
+        .buffer_unordered(1)
         .filter_map(|x| async { x.map_err(|e| error!("{}", e)).ok() })
         .collect::<Vec<_>>()
         .await
@@ -132,6 +132,8 @@ async fn fetch_player(ctx: WorkerContext, player_id: Uuid) -> anyhow::Result<Pla
     ctx.db
         .save(&resp.to_chron(EntityKind::Player, player_id)?)
         .await?;
+
+    tokio::time::sleep(Duration::from_millis(1000)).await;
 
     Ok(resp.parse()?)
 }

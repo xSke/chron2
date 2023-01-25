@@ -69,7 +69,7 @@ pub struct PollBlessingPreferences;
 #[async_trait]
 impl IntervalWorker for PollBlessingPreferences {
     fn interval() -> tokio::time::Interval {
-        interval(Duration::from_secs(60 * 5))
+        interval(Duration::from_secs(60 * 30))
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
@@ -85,7 +85,7 @@ impl IntervalWorker for PollBlessingPreferences {
 
         for team in teams.values().flatten() {
             get_and_save_team_election_data(ctx, team.id).await?;
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(Duration::from_secs(30)).await;
         }
 
         Ok(())

@@ -16,7 +16,7 @@ pub struct PollPosts;
 #[async_trait]
 impl IntervalWorker for PollPosts {
     fn interval() -> tokio::time::Interval {
-        tokio::time::interval(Duration::from_secs(30))
+        tokio::time::interval(Duration::from_secs(60))
     }
 
     async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
