@@ -51,6 +51,8 @@ impl IntervalWorker for PollPosts {
             if page_idx >= page.total_pages - 1 {
                 break;
             }
+
+            tokio::time::sleep(Duration::from_secs(5)).await;
         }
 
         for url in icons {
