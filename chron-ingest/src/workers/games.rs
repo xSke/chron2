@@ -180,6 +180,7 @@ struct Game {
     id: Uuid,
     day: i32,
     complete: bool,
+    started: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -279,6 +280,38 @@ impl IntervalWorker for PusherCatchup {
                 ctx.pusher
                     .subscribe(format!("game-feed-{}", game.id))
                     .await?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub struct GamesCatchup;
+
+#[async_trait]
+impl IntervalWorker for GamesCatchup {
+    fn interval() -> tokio::time::Interval {
+        tokio::time::interval(Duration::from_secs(60*30))
+    }
+
+    async fn tick(&mut self, ctx: &mut WorkerContext) -> anyhow::Result<()> {
+        let entities = ctx
+            .db
+            .get_entities(GetEntitiesQuery {
+                at: None,
+                id: Vec::new(),
+                kind: EntityKind::Game,
+                order: chron_db::queries::SortOrder::Asc,
+                page: None,
+            })
+            .await?;
+
+        for item in entities.items {
+            let game = serde_json::from_value::<Game>(item.data)?;
+            if game.started && !game.complete {
+                poll_single_game(ctx.clone(), game.id, true).await?;
+                tokio::time::sleep(Duration::from_secs(3)).await;
             }
         }
 

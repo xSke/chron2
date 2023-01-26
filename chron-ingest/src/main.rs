@@ -14,7 +14,7 @@ use uuid::Uuid;
 use workers::{
     assets::PollAssets,
     elections::{PollBlessingPreferences, PollElections},
-    games::{PollAllGameOutcomes, PollAllGames, PollLiveGames, PusherCatchup},
+    games::{PollAllGameOutcomes, PollAllGames, PollLiveGames, PusherCatchup, GamesCatchup},
     posts::PollPosts,
     rosters::{PollActiveRosters, PollAllLeagueData, PollActiveTeams},
     schedule::PollSchedule,
@@ -116,6 +116,7 @@ async fn main() -> anyhow::Result<()> {
         // spawn(ctx.clone(), PollAllGameOutcomes);
 
         spawn(ctx.clone(), PusherCatchup);
+        spawn(ctx.clone(), GamesCatchup);
     } else {
         spawn(ctx.clone(), PusherCatchup);
     }
