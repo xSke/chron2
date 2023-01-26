@@ -124,7 +124,7 @@ impl DataClient {
         let timestamp_before = OffsetDateTime::now_utc();
         let response = request.send().await?;
         let timestamp_after = OffsetDateTime::now_utc();
-        info!("{} {}", response.status(), orig_url);
+        info!("{} {} ({}s)", response.status(), orig_url, (timestamp_after - timestamp_before).as_seconds_f64());
 
         let url = response.url().clone();
         let last_modified = response
