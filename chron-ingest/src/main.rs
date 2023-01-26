@@ -16,7 +16,7 @@ use workers::{
     elections::{PollBlessingPreferences, PollElections},
     games::{PollAllGameOutcomes, PollAllGames, PollLiveGames, PusherCatchup},
     posts::PollPosts,
-    rosters::{PollActiveRosters, PollAllLeagueData},
+    rosters::{PollActiveRosters, PollAllLeagueData, PollActiveTeams},
     schedule::PollSchedule,
     sim::{PollSimData, SimData},
     IntervalWorker, SimState, WorkerContext,
@@ -102,6 +102,7 @@ async fn main() -> anyhow::Result<()> {
         // doing this here is a bit nasty but eh
         workers::sim::get_and_update_sim(&mut ctx).await?;
 
+        spawn(ctx.clone(), PollActiveTeams);
         spawn(ctx.clone(), PollAllGames);
         spawn(ctx.clone(), PollLiveGames::new());
         // spawn(ctx.clone(), PollSchedule);

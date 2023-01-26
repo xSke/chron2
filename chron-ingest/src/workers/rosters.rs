@@ -13,6 +13,20 @@ use uuid::Uuid;
 
 use super::{IntervalWorker, WorkerContext};
 
+pub struct PollActiveTeams;
+
+#[async_trait]
+impl IntervalWorker for PollActiveTeams {
+    fn interval() -> tokio::time::Interval {
+        interval(Duration::from_secs(60))
+    }
+
+    async fn tick(&mut self, ctx: &mut super::WorkerContext) -> anyhow::Result<()> {
+        fetch_and_save_active_teams(ctx).await?;
+        Ok(())
+    }
+}
+
 pub struct PollActiveRosters;
 
 #[async_trait]
@@ -22,33 +36,8 @@ impl IntervalWorker for PollActiveRosters {
     }
 
     async fn tick(&mut self, ctx: &mut super::WorkerContext) -> anyhow::Result<()> {
-        let (season, day) = ctx.season_day();
-
-        let resp = ctx
-            .client
-            .fetch(&format!(
-                "https://api2.blaseball.com/seasons/{}/days/{}/teams",
-                season, day
-            ))
-            .await?;
-        let teams = resp.parse::<HashMap<String, Vec<serde_json::Value>>>()?;
-
-        let mut player_ids = Vec::new();
-        for team_value in teams.into_values().flatten() {
-            let team = serde_json::from_value::<Team>(team_value.clone())?;
-            ctx.db
-                .save(&NewObject {
-                    kind: EntityKind::Team,
-                    entity_id: team.id,
-                    request_time: resp.request_time(),
-                    timestamp: resp.timestamp(),
-                    data: team_value,
-                })
-                .await?;
-            player_ids.extend(team.roster.iter().map(|x| x.id));
-        }
-
-        fetch_players(ctx, player_ids.into_iter()).await;
+        let player_ids = fetch_and_save_active_teams(ctx).await?;
+        fetch_and_save_players(ctx, player_ids.into_iter()).await;
 
         Ok(())
     }
@@ -82,7 +71,7 @@ impl IntervalWorker for PollAllLeagueData {
         //         .flat_map(|x| x.trim().parse::<Uuid>()),
         // );
         player_ids.extend(teams.iter().flat_map(|x| x.roster.iter().map(|x| x.id)));
-        let players = fetch_players(ctx, player_ids.into_iter()).await;
+        let players = fetch_and_save_players(ctx, player_ids.into_iter()).await;
 
         // if any of those players are on teams we haven't seen, fetch those too
         let new_team_ids: HashSet<Uuid> = players
@@ -108,7 +97,38 @@ struct RosterPlayer {
     id: Uuid,
 }
 
-async fn fetch_players(
+
+async fn fetch_and_save_active_teams(ctx:&WorkerContext) -> anyhow::Result<Vec<Uuid>> {
+    let (season, day) = ctx.season_day();
+
+    let resp = ctx
+        .client
+        .fetch(&format!(
+            "https://api2.blaseball.com/seasons/{}/days/{}/teams",
+            season, day
+        ))
+        .await?;
+    let teams = resp.parse::<HashMap<String, Vec<serde_json::Value>>>()?;
+
+    let mut player_ids = Vec::new();
+    for team_value in teams.into_values().flatten() {
+        let team = serde_json::from_value::<Team>(team_value.clone())?;
+        ctx.db
+            .save(&NewObject {
+                kind: EntityKind::Team,
+                entity_id: team.id,
+                request_time: resp.request_time(),
+                timestamp: resp.timestamp(),
+                data: team_value,
+            })
+            .await?;
+        player_ids.extend(team.roster.iter().map(|x| x.id));
+    }
+
+    Ok(player_ids)
+}
+
+async fn fetch_and_save_players(
     ctx: &mut WorkerContext,
     player_ids: impl Iterator<Item = Uuid>,
 ) -> Vec<PlayerData> {
