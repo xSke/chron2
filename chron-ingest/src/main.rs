@@ -119,6 +119,7 @@ async fn main() -> anyhow::Result<()> {
         spawn(ctx.clone(), GamesCatchup);
     } else {
         spawn(ctx.clone(), PusherCatchup);
+        spawn(ctx.clone(), GamesCatchup);
     }
 
     let mut rx = Box::pin(rx);
