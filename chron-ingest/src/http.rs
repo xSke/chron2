@@ -152,6 +152,8 @@ impl DataClient {
                     let mut cached_resp = resp.clone();
                     cached_resp.status_code = response.status();
                     cached_resp.was_cached = true;
+                    cached_resp.timestamp_before = timestamp_before;
+                    cached_resp.timestamp_after = timestamp_after;
                     return Ok(cached_resp);
                 }
             }
