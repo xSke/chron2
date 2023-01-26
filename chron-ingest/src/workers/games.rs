@@ -181,6 +181,8 @@ struct Game {
     day: i32,
     complete: bool,
     started: bool,
+    #[serde(rename="seasonId")]
+    season_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
@@ -307,9 +309,10 @@ impl IntervalWorker for GamesCatchup {
             })
             .await?;
 
+        let (season, day) = ctx.season_day();
         for item in entities.items {
             let game = serde_json::from_value::<Game>(item.data)?;
-            if game.started && !game.complete {
+            if game.season_id == season && game.day <= day && !game.complete {
                 poll_single_game(ctx.clone(), game.id, true).await?;
                 tokio::time::sleep(Duration::from_secs(3)).await;
             }
