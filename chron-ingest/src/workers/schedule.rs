@@ -1,13 +1,13 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use chron_db::{models::EntityKind, NewObject};
+use chron_db::{models::EntityKind, NewObject, queries::GetEntitiesQuery};
 use futures::{stream, StreamExt, TryFutureExt};
 use serde::Deserialize;
 use tracing::error;
 use uuid::Uuid;
 
-use super::{IntervalWorker, WorkerContext};
+use super::{IntervalWorker, WorkerContext, games::poll_single_game};
 
 pub struct PollSchedule;
 
@@ -30,7 +30,7 @@ impl IntervalWorker for PollSchedule {
                 self.fetch_schedule_hourly(ctx.clone(), d.local_date)
                     .unwrap_or_else(|e| error!("{}", e))
             })
-            .buffer_unordered(4)
+            .buffer_unordered(1)
             .collect::<Vec<_>>()
             .await;
 
@@ -73,7 +73,12 @@ impl PollSchedule {
                     data: game_value,
                 })
                 .await?;
+
+            // sometimes we get future game ids only through this (eg. tournaments)
+            try_fetch_game_if_not_exists(&ctx, game_id).await?;
         }
+
+        tokio::time::sleep(Duration::from_secs(5)).await;
 
         Ok(())
     }
@@ -95,4 +100,20 @@ struct ScheduleHour {
 struct BetData {
     #[serde(rename = "gameId")]
     game_id: Uuid,
+}
+
+async fn try_fetch_game_if_not_exists(ctx: &WorkerContext, game_id: Uuid) -> anyhow::Result<()> {
+    let entities = ctx.db.get_entities(GetEntitiesQuery {
+        at: None,
+        id: vec![game_id],
+        kind: EntityKind::Game,
+        order: chron_db::queries::SortOrder::Asc,
+        page: None
+    }).await?;
+
+    if entities.items.is_empty() {
+        poll_single_game(ctx.clone(), game_id, true).await?;
+    }
+
+    Ok(())
 }

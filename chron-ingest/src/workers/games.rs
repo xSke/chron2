@@ -77,7 +77,8 @@ impl PollLiveGames {
     }
 }
 
-async fn poll_single_game(
+// todo: move this somewhere else (it's referenced from schedule.rs)
+pub async fn poll_single_game(
     ctx: WorkerContext,
     game_id: Uuid,
     poll_extra: bool,
@@ -176,7 +177,7 @@ impl IntervalWorker for PollLiveGames {
 }
 
 #[derive(Debug, Deserialize)]
-struct Game {
+pub struct Game {
     id: Uuid,
     day: i32,
     complete: bool,
