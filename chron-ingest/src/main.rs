@@ -110,8 +110,8 @@ async fn main() -> anyhow::Result<()> {
         spawn(ctx.clone(), PollSimData);
         spawn(ctx.clone(), PollActiveRosters);
         spawn(ctx.clone(), PollAllLeagueData);
-        // spawn(ctx.clone(), PollElections);
-        // spawn(ctx.clone(), PollBlessingPreferences);
+        spawn(ctx.clone(), PollElections);
+        spawn(ctx.clone(), PollBlessingPreferences);
         spawn(ctx.clone(), PollAssets);
         // spawn(ctx.clone(), PollAllGameOutcomes);
 
